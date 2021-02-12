@@ -17,6 +17,15 @@ const globals = {}
 
 let frames = 0
 
+
+// kind of jumps
+const KIND_JUMP = {
+    SOFT: 0,
+    MEDIUM: 1,
+    HARD: 2,
+}
+
+
 function createFlappyBird() {
     const flappyBird = {
         spriteX: 0, spriteY: 0,
@@ -25,7 +34,7 @@ function createFlappyBird() {
 
         // moves
         speed: 0, gravity: 0.25,
-        jump_lenght: 4.6,
+        jump_lenght: 5,
 
         // aspect
         currentFrame: 0,
@@ -52,10 +61,38 @@ function createFlappyBird() {
             )
         },
 
-        jump() {
-            console.log('I need to jump')
+
+        // SELECT THE KIND OF JUMP
+        jump(kind_of_jump) {
+            switch (kind_of_jump) {
+                case KIND_JUMP.HARD:
+                    globals.flappyBird.high_jump()
+                    break;
+                case KIND_JUMP.MEDIUM:
+                    globals.flappyBird.medium_jump()
+                    break;
+                case KIND_JUMP.SOFT:
+                    globals.flappyBird.soft_jump()
+                    break;
+            }
+        },
+
+        // JUMPS
+
+        soft_jump() {
+            flappyBird.speed = -flappyBird.jump_lenght * 0.3
+        },
+        medium_jump() {
+
+            flappyBird.speed = -flappyBird.jump_lenght * 0.6
+        },
+        high_jump() {
+
             flappyBird.speed = -flappyBird.jump_lenght
         },
+        
+
+        
 
         update() {
 
@@ -101,7 +138,6 @@ function createFloor() {
         x: 0, y: canvas.height - 112,
 
         draw() {
-
             context.drawImage(
                 sprites,
                 this.spriteX, this.spriteY, // local where base image init
@@ -183,20 +219,141 @@ const getReady = {
     },
 }
 
+function createPipes() {
+
+    // floor object
+    const pipes = {
+
+        weigth: 52, height: 400,
+
+        floor: {
+            spriteX: 0, spriteY: 169,
+        },
+
+        ceil: {
+            spriteX: 52, spriteY: 169,
+        },
+
+        space: 80,
+        pair_pipes: [
+
+        ],
+
+        draw() {
+
+            //console.log(pipes.pair_pipes)
+            pipes.pair_pipes.forEach(function (pair_) {
+                const YRandom = pair_.y
+                const spaceBetweenPipes = 90
+
+                // Drawing floor pipe
+                const pipeCeilX = pair_.x
+                const pipeCeilY = YRandom
+
+                context.drawImage(
+                    sprites,
+                    pipes.ceil.spriteX, pipes.ceil.spriteY, // local where base image init
+                    pipes.weigth, pipes.height, // Image lenght
+                    pipeCeilX, pipeCeilY,
+                    pipes.weigth, pipes.height
+                )
+
+
+                // Drawing ceil pipe
+                const pipeFloorX = pair_.x
+                const pipeFloorY = pipes.height + spaceBetweenPipes + YRandom
+
+                context.drawImage(
+                    sprites,
+                    pipes.floor.spriteX, pipes.floor.spriteY, // local where base image init
+                    pipes.weigth, pipes.height, // Image lenght
+                    pipeFloorX, pipeFloorY,
+                    pipes.weigth, pipes.height
+                )
+
+                pair_.ceilPipe = {
+                    x: pipeCeilX,
+                    y: pipes.height + pipeCeilY // final of ceil pipe
+                }
+
+                pair_.floorPipe = {
+                    x: pipeFloorX,
+                    y: pipeFloorY
+                }
+
+            })
+        },
+
+
+        haveCollid(pair) {
+
+            const headFlappy = globals.flappyBird.y
+            const feetFlappy = globals.flappyBird.y + globals.flappyBird.height
+
+            if (globals.flappyBird.x >= pair.x) {
+
+                if (headFlappy <= pair.ceilPipe.y) {
+                    return true
+                }
+                if (feetFlappy >= pair.floorPipe.y) {
+                    return true
+                }
+            }
+
+            return false
+        },
+
+        update() {
+            const isPass100Frames = frames % 100 === 0;
+
+            if (isPass100Frames) {
+
+                pipes.pair_pipes.push(
+                    { x: canvas.width, y: -150 * (Math.random() + 1) }
+                )
+
+            }
+
+            pipes.pair_pipes.forEach(function (pair_) {
+                pair_.x -= 2
+
+                if (pipes.haveCollid(pair_)) {
+
+                    console.log('perdeu playboy')
+                    changeScreen(Screen.INIT)
+                }
+
+                if (pair_.x < - pipes.weigth) {
+                    pipes.pair_pipes.shift()
+                }
+            })
+
+        }
+    }
+
+    return pipes
+}
+
+
 const Screen = {
     INIT: {
         init() {
             globals.flappyBird = createFlappyBird()
             globals.floor = createFloor()
+            globals.pipes = createPipes()
         },
         draw() {
+
             background.draw()
             globals.floor.draw()
             globals.flappyBird.draw()
             getReady.draw()
+
         },
         update() {
+
             globals.floor.update()
+
         },
         click() {
             changeScreen(Screen.GAME)
@@ -208,13 +365,15 @@ const Screen = {
             background.draw()
             globals.floor.draw()
             globals.flappyBird.draw()
+            globals.pipes.draw()
         },
         update() {
             globals.flappyBird.update()
             globals.floor.update()
+            globals.pipes.update()
         },
-        click() {
-            globals.flappyBird.jump()
+        click(kind_jump) {
+            globals.flappyBird.jump(kind_jump)
         }
     }
 }
@@ -251,18 +410,22 @@ function loop() {
 
 window.addEventListener('click', function () {
     if (activateScreen.click) {
-        activateScreen.click()
+        activateScreen.click(KIND_JUMP.HARD)
     }
 
 })
 
-document.addEventListener( 'keypress', (evt) =>{
+document.addEventListener('keypress', (evt) => {
     const KeyName = evt.key
     // alert(KeyName == ' ') space key
 
-    if (KeyName === ' '){
+    if (KeyName === ' ') {
         if (activateScreen.click) {
-            activateScreen.click()
+            activateScreen.click(KIND_JUMP.MEDIUM)
+        }
+    } else {
+        if (activateScreen.click) {
+            activateScreen.click(KIND_JUMP.SOFT)
         }
     }
 })
