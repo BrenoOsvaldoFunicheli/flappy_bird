@@ -98,10 +98,14 @@ function createFlappyBird() {
 
             // add list
             // take care with this
+
+            
             if (collide(this, globals.floor)) {
                 console.log('Crashed')
+
+                if
                 HIT.play()
-                changeScreen(Screen.INIT)
+                // changeScreen(Screen.INIT)
                 return
             }
             this.speed += this.gravity
@@ -363,14 +367,16 @@ const Screen = {
     GAME: {
         draw() {
             background.draw()
+            globals.pipes.draw()
             globals.floor.draw()
             globals.flappyBird.draw()
-            globals.pipes.draw()
+
         },
         update() {
-            globals.flappyBird.update()
-            globals.floor.update()
             globals.pipes.update()
+            globals.floor.update()
+            globals.flappyBird.update()
+        
         },
         click(kind_jump) {
             globals.flappyBird.jump(kind_jump)
